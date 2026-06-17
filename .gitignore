@@ -9,6 +9,8 @@
 *.test/
 vendor/
 bin/
+cli/geo
+backend/server
 
 # IDE
 .idea/

@@ -1,0 +1,67 @@
+{{define "content"}}
+<script>
+function fillCrawlExample() {
+  document.querySelector('[name="query"]').value = 'Brewok Prime Malang';
+}
+</script>
+
+<h2 class="text-2xl font-bold mb-4">Digital Presence Crawler</h2>
+<p class="text-gray-500 mb-6">Check how visible your brand is across the web (Wikipedia, Wikidata, etc).</p>
+
+<form hx-post="/crawl" hx-target="#result" hx-indicator="#loading" class="mb-6">
+  <div class="flex gap-2">
+    <input type="text" name="query" placeholder="e.g. Brewok Prime Malang"
+      class="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap">Crawl</button>
+    <button type="button" onclick="fillCrawlExample()" class="px-3 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 whitespace-nowrap">Try Example</button>
+  </div>
+</form>
+
+<div id="loading" class="hidden text-blue-600 mb-4">Crawling...</div>
+<div id="result">
+  {{if .Error}}
+    <div class="bg-red-50 text-red-600 p-4 rounded-lg mb-4">{{.Error}}</div>
+  {{end}}
+  {{if .Result}}
+    {{template "crawl-result" .}}
+  {{end}}
+</div>
+{{end}}
+
+{{define "crawl-result"}}
+<div class="bg-white p-6 rounded-lg shadow">
+  {{with .Result}}
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-lg font-semibold">{{.Query}}</h3>
+    <span class="px-3 py-1 rounded-full text-sm font-medium
+      {{if eq .Label "Strong Presence"}}bg-green-100 text-green-700
+      {{else if eq .Label "Moderate Presence"}}bg-blue-100 text-blue-700
+      {{else if eq .Label "Weak Presence"}}bg-yellow-100 text-yellow-700
+      {{else}}bg-red-100 text-red-700{{end}}">
+      {{.Label}} ({{.Score}}/{{.MaxScore}})
+    </span>
+  </div>
+
+  <p class="text-sm text-gray-500 mb-4">{{.TotalHits}} of {{len .Sources}} sources matched</p>
+
+  <div class="space-y-2">
+    {{range .Sources}}
+    <div class="border rounded-lg p-3 {{if .Found}}bg-green-50 border-green-200{{else}}bg-gray-50 border-gray-200{{end}}">
+      <div class="flex items-center gap-2">
+        <span>{{if .Found}}&#9989;{{else}}&#10060;{{end}}</span>
+        <span class="font-medium text-sm">{{.Source}}</span>
+      </div>
+      {{if .Found}}
+      <div class="mt-1 text-sm text-gray-600">
+        <div><span class="text-gray-400">Title:</span> {{.Title}}</div>
+        {{if .URL}}<div><a href="{{.URL}}" target="_blank" class="text-blue-600 hover:underline text-xs">{{.URL}}</a></div>{{end}}
+        {{if .Snippet}}<div class="text-xs text-gray-400 mt-1">{{.Snippet}}</div>{{end}}
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+  <p class="text-xs text-gray-400 mt-4">Crawled at {{.Time}}</p>
+</div>
+{{end}}

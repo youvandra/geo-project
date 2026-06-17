@@ -11,6 +11,7 @@ import (
 	"github.com/kucnigplaygame/geo-project/cli/cmdtopic"
 	"github.com/kucnigplaygame/geo-project/cli/cmdtracker"
 	"github.com/kucnigplaygame/geo-project/cli/geoaudit"
+	"github.com/kucnigplaygame/geo-project/cli/geocrawl"
 	"github.com/kucnigplaygame/geo-project/cli/geolocal"
 	"github.com/kucnigplaygame/geo-project/cli/georeview"
 )
@@ -29,6 +30,7 @@ func main() {
 	fmt.Println("  tracker   AI answer monitor")
 	fmt.Println("  sitemap   Sitemap optimizer")
 	fmt.Println("  audit     AI answer auditor")
+	fmt.Println("  crawl     Digital presence crawler")
 	fmt.Println("  local     Local business GEO optimizer")
 	fmt.Println("  review    Review analyzer")
 	return
@@ -52,6 +54,8 @@ func main() {
 		cmdsitemap.Run(args)
 	case "audit":
 		geoaudit.Run(args)
+	case "crawl":
+		geocrawl.Run(args)
 	case "local":
 		geolocal.Run(args)
 	case "review":

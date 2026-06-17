@@ -1,7 +1,8 @@
 {{define "content"}}
 <script>
-function fillExample(btn, field, val) {
-  btn.previousElementSibling.querySelector('[name="' + field + '"]').value = val;
+function fillSchemaExample() {
+  document.querySelector('[name="type"]').value = 'Article';
+  document.querySelector('[name="fields"]').value = 'headline=Belajar GEO dari A-Z author=kucnigplaygame';
 }
 </script>
 
@@ -27,7 +28,7 @@ function fillExample(btn, field, val) {
   </div>
   <div class="flex gap-2">
     <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Build Schema</button>
-    <button type="button" onclick="document.querySelector('[name=type]').value='Article';document.querySelector('[name=fields]').value='headline=\"Belajar GEO dari A-Z\" author=\"kucnigplaygame\" description=\"Panduan lengkap GEO\"'" class="px-3 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">Try Example</button>
+    <button type="button" onclick="fillSchemaExample()" class="px-3 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">Try Example</button>
   </div>
 </form>
 

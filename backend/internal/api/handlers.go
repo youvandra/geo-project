@@ -190,6 +190,29 @@ func HandleTrackerAnalyze(w http.ResponseWriter, r *http.Request) {
 	render(w, "tracker", data)
 }
 
+func HandleCrawlForm(w http.ResponseWriter, r *http.Request) {
+	render(w, "crawl", PageData{Title: "Digital Presence Crawler"})
+}
+
+func HandleCrawlAnalyze(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	query := r.FormValue("query")
+	if query == "" {
+		render(w, "crawl", PageData{Title: "Digital Presence Crawler", Error: "Query is required"})
+		return
+	}
+
+	result := engine.CrawlBrand(query)
+	data := PageData{Title: "Digital Presence Crawler", Result: result, Time: time.Now().Format(time.RFC3339)}
+
+	if r.Header.Get("HX-Request") == "true" {
+		tmpl, _ := template.ParseFiles("web/templates/crawl.html")
+		tmpl.ExecuteTemplate(w, "crawl-result", data)
+		return
+	}
+	render(w, "crawl", data)
+}
+
 func HandleAuditForm(w http.ResponseWriter, r *http.Request) {
 	render(w, "audit", PageData{Title: "AI Answer Auditor"})
 }
@@ -266,6 +289,54 @@ func HandleReviewAnalyze(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	render(w, "review", data)
+}
+
+func HandleReportForm(w http.ResponseWriter, r *http.Request) {
+	render(w, "report", PageData{Title: "GEO Report"})
+}
+
+func HandleReportGenerate(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	brand := r.FormValue("brand")
+	if brand == "" {
+		render(w, "report", PageData{Title: "GEO Report", Error: "Brand name is required"})
+		return
+	}
+
+	audit, err := engine.AuditBrand(brand)
+	if err != nil {
+		audit = &engine.AuditResult{Brand: brand, Label: "Error"}
+	}
+
+	crawl := engine.CrawlBrand(brand)
+	review := engine.AnalyzeReviews(brand)
+	city := r.FormValue("city")
+	if city == "" {
+		city = "Malang"
+	}
+	local := engine.AnalyzeLocal(brand, city)
+
+	report := map[string]interface{}{
+		"brand":  brand,
+		"city":   city,
+		"audit":  audit,
+		"crawl":  crawl,
+		"review": review,
+		"local":  local,
+	}
+
+	data := PageData{
+		Title:  "GEO Report — " + brand,
+		Result: report,
+		Time:   time.Now().Format(time.RFC3339),
+	}
+
+	if r.Header.Get("HX-Request") == "true" {
+		tmpl, _ := template.ParseFiles("web/templates/report.html")
+		tmpl.ExecuteTemplate(w, "report-result", data)
+		return
+	}
+	render(w, "report", data)
 }
 
 func HandleSitemapForm(w http.ResponseWriter, r *http.Request) {

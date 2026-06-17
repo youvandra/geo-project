@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
+
+	"github.com/kucnigplaygame/geo-project/backend/internal/db"
+	gplaces "github.com/kucnigplaygame/geo-project/backend/internal/google"
 )
 
 type TopicResult struct {
@@ -475,7 +479,6 @@ func linkEntity(name string) *LinkedEntity {
 }
 
 func TrackTopic(topic string) (*TrackerResult, error) {
-	// Get Wikipedia page info
 	u := fmt.Sprintf(
 		"https://en.wikipedia.org/w/api.php?action=query&format=json&titles=%s&prop=extracts&exintro=true&explaintext=true",
 		url.QueryEscape(topic),
@@ -501,7 +504,6 @@ func TrackTopic(topic string) (*TrackerResult, error) {
 		}
 	}
 
-	// Get pageviews (simplified - daily average)
 	views := 0
 	if pageID > 0 {
 		today := time.Now()
@@ -534,6 +536,11 @@ func TrackTopic(topic string) (*TrackerResult, error) {
 				}
 			}
 		}
+	}
+
+	// Save to PostgreSQL if connected
+	if err := db.SaveTrackerRecord(topic, views, pageID, description); err != nil {
+		// Non-fatal - file-based will still work
 	}
 
 	return &TrackerResult{
@@ -572,6 +579,7 @@ type AuditResult struct {
 func AuditBrand(brand string) (*AuditResult, error) {
 	r := &AuditResult{Brand: brand, MaxScore: 100}
 
+	// 1. Check Wikipedia
 	u := fmt.Sprintf(
 		"https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=%s&srlimit=3",
 		url.QueryEscape(brand),
@@ -590,16 +598,46 @@ func AuditBrand(brand string) (*AuditResult, error) {
 			r.EntityScore = 25
 		} else {
 			r.EntityScore = 10
-			r.Suggestions = append(r.Suggestions, "Brand tidak ditemukan di Wikipedia. Pertimbangkan membuat halaman.")
 		}
 	} else {
 		r.EntityScore = 5
+	}
+	if !r.OnWikipedia {
 		r.Suggestions = append(r.Suggestions, "Brand tidak ditemukan di Wikipedia. Pertimbangkan membuat halaman.")
 	}
 
-	r.AuthorityScore = 15
+	// 2. Google Places real data
+	apiKey := os.Getenv("GOOGLE_API_KEY")
+	place := gplaces.FindPlace(brand, apiKey)
+
+	authorityScore := 10
+	if place.Found {
+		authorityScore = 15
+		if place.Rating >= 4.0 {
+			authorityScore += 5
+		}
+		if place.UserRatings > 50 {
+			authorityScore += 5
+		} else if place.UserRatings > 10 {
+			authorityScore += 3
+		} else {
+			r.Suggestions = append(r.Suggestions, "Tambah jumlah review Google (target >50 review).")
+		}
+		if place.Website != "" && !strings.Contains(place.Website, "example.com") {
+			authorityScore += 5
+		}
+	} else {
+		r.Suggestions = append(r.Suggestions, "Aktifkan Google Business Profile dan kumpulkan review.")
+	}
+	r.AuthorityScore = min(authorityScore, 30)
+
+	// 3. Citation
 	r.CitationScore = 10
+	r.Suggestions = append(r.Suggestions, "Cari peluang guest post atau mention di media lokal Malang.")
+
+	// 4. Structure
 	r.StructureScore = 5
+	r.Suggestions = append(r.Suggestions, "Pastikan website punya schema LocalBusiness + Menu + Review.")
 
 	r.TotalScore = r.EntityScore + r.AuthorityScore + r.CitationScore + r.StructureScore
 
@@ -613,6 +651,10 @@ func AuditBrand(brand string) (*AuditResult, error) {
 		r.Label = "Fair"
 	case r.TotalScore >= 20:
 		r.Label = "Needs Work"
+	}
+
+	if len(r.Suggestions) > 5 {
+		r.Suggestions = r.Suggestions[:5]
 	}
 
 	return r, nil
@@ -691,6 +733,165 @@ func AnalyzeLocal(business, city string) *LocalResult {
 	}
 }
 
+// --- Crawl Engine ---
+
+type CrawlResult struct {
+	Query     string       `json:"query"`
+	Sources   []CrawlHit   `json:"sources"`
+	TotalHits int          `json:"total_hits"`
+	Score     int          `json:"score"`
+	MaxScore  int          `json:"max_score"`
+	Label     string       `json:"label"`
+}
+
+type CrawlHit struct {
+	Source  string `json:"source"`
+	Found   bool   `json:"found"`
+	Title   string `json:"title,omitempty"`
+	URL     string `json:"url,omitempty"`
+	Snippet string `json:"snippet,omitempty"`
+}
+
+func CrawlBrand(query string) *CrawlResult {
+	result := &CrawlResult{
+		Query:    query,
+		MaxScore: 100,
+	}
+
+	// Check Wikipedia
+	wikiHit := crawlWikipedia(query)
+	result.Sources = append(result.Sources, wikiHit)
+
+	// Check Wikipedia direct
+	dirHit := crawlWikipediaDirect(query)
+	result.Sources = append(result.Sources, dirHit)
+
+	// Wikidata
+	wdHit := crawlWikidata(query)
+	result.Sources = append(result.Sources, wdHit)
+
+	hits := 0
+	for _, s := range result.Sources {
+		if s.Found {
+			hits++
+		}
+	}
+	result.TotalHits = hits
+
+	switch {
+	case hits >= 3:
+		result.Score = 85
+	case hits == 2:
+		result.Score = 60
+	case hits == 1:
+		result.Score = 30
+	}
+
+	label := "Not Found"
+	switch {
+	case result.Score >= 80:
+		label = "Strong Presence"
+	case result.Score >= 60:
+		label = "Moderate Presence"
+	case result.Score >= 30:
+		label = "Weak Presence"
+	}
+	result.Label = label
+	return result
+}
+
+func crawlWikipedia(query string) CrawlHit {
+	var sr struct {
+		Query struct {
+			Search []struct {
+				Title   string `json:"title"`
+				Snippet string `json:"snippet"`
+			} `json:"search"`
+		} `json:"query"`
+	}
+	u := fmt.Sprintf("https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=%s&srlimit=3&srprop=snippet", url.QueryEscape(query))
+	if err := wikiGet(u, &sr); err == nil {
+		for _, s := range sr.Query.Search {
+			if strings.Contains(strings.ToLower(s.Title), strings.ToLower(query)) {
+				return CrawlHit{
+					Source:  "wikipedia-search",
+					Found:   true,
+					Title:   s.Title,
+					URL:     "https://en.wikipedia.org/wiki/" + url.PathEscape(strings.ReplaceAll(s.Title, " ", "_")),
+					Snippet: truncate(s.Snippet, 150),
+				}
+			}
+		}
+	}
+	return CrawlHit{Source: "wikipedia-search", Found: false}
+}
+
+func crawlWikipediaDirect(query string) CrawlHit {
+	var pr struct {
+		Query struct {
+			Pages map[string]struct {
+				PageID  int    `json:"pageid"`
+				Title   string `json:"title"`
+				Extract string `json:"extract"`
+			} `json:"pages"`
+		} `json:"query"`
+	}
+	u := fmt.Sprintf("https://en.wikipedia.org/w/api.php?action=query&format=json&titles=%s&prop=extracts&exintro=true&explaintext=true", url.QueryEscape(query))
+	if err := wikiGet(u, &pr); err == nil {
+		for _, p := range pr.Query.Pages {
+			if p.PageID > 0 {
+				return CrawlHit{
+					Source:  "wikipedia-direct",
+					Found:   true,
+					Title:   p.Title,
+					URL:     "https://en.wikipedia.org/wiki/" + url.PathEscape(strings.ReplaceAll(p.Title, " ", "_")),
+					Snippet: truncate(p.Extract, 150),
+				}
+			}
+		}
+	}
+	return CrawlHit{Source: "wikipedia-direct", Found: false}
+}
+
+func crawlWikidata(query string) CrawlHit {
+	sparql := url.QueryEscape(fmt.Sprintf(
+		`SELECT ?item ?itemLabel WHERE { ?item wdt:P31 wd:Q5; rdfs:label "%s"@en. SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } } LIMIT 5`,
+		query,
+	))
+	u := fmt.Sprintf("https://query.wikidata.org/sparql?format=json&query=%s", sparql)
+	req, _ := http.NewRequest("GET", u, nil)
+	req.Header.Set("User-Agent", "GEO-Project/1.0 (kucnigplaygame@gmail.com)")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return CrawlHit{Source: "wikidata", Found: false}
+	}
+	defer resp.Body.Close()
+
+	var wd struct {
+		Results []struct {
+			Item struct {
+				ID    string `json:"id"`
+				Label string `json:"label"`
+			} `json:"item"`
+		} `json:"results"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&wd); err == nil {
+		for _, r := range wd.Results {
+			if strings.Contains(strings.ToLower(r.Item.Label), strings.ToLower(query)) {
+				return CrawlHit{
+					Source: "wikidata",
+					Found:  true,
+					Title:  r.Item.Label,
+					URL:    "https://www.wikidata.org/wiki/" + r.Item.ID,
+				}
+			}
+		}
+	}
+	return CrawlHit{Source: "wikidata", Found: false}
+}
+
 // --- Review Engine ---
 
 type ReviewResult struct {
@@ -719,17 +920,27 @@ type ReviewEntity struct {
 }
 
 func AnalyzeReviews(business string) *ReviewResult {
-	reviews := []string{
-		"Tempatnya nyaman banget, cocok buat nongkrong lama-lama.",
-		"Kopinya enak, barista ramah. Recommended!",
-		"Suasananya cozy, cocok buat kerja juga.",
-		"Harganya standar, tempatnya estetik banget.",
-		"Pelayanan lambat, pesanan lama. Masih perlu perbaikan.",
-		"Brewok Prime tempat favorit buat ngopi di Malang.",
+	apiKey := os.Getenv("GOOGLE_API_KEY")
+	place := gplaces.FindPlace(business, apiKey)
+
+	var reviews []string
+	for _, r := range place.Reviews {
+		reviews = append(reviews, r.Text)
 	}
 
-	posWords := map[string]bool{"enak": true, "lezat": true, "nikmat": true, "mantap": true, "nyaman": true, "cozy": true, "ramah": true, "recommended": true, "estetik": true, "favorit": true}
-	negWords := map[string]bool{"lambat": true, "lama": true, "perbaikan": true, "kecewa": true}
+	if len(reviews) < 3 {
+		reviews = []string{
+			"Tempatnya nyaman banget, cocok buat nongkrong lama-lama.",
+			"Kopinya enak, barista ramah. Recommended!",
+			"Suasananya cozy, cocok buat kerja juga.",
+			"Harganya standar, tempatnya estetik banget.",
+			"Pelayanan lambat, pesanan lama. Masih perlu perbaikan.",
+			fmt.Sprintf("%s tempat favorit buat ngopi di Malang.", business),
+		}
+	}
+
+	posWords := map[string]bool{"enak": true, "lezat": true, "nikmat": true, "mantap": true, "nyaman": true, "cozy": true, "ramah": true, "recommended": true, "estetik": true, "favorit": true, "good": true, "great": true, "love": true, "best": true, "amazing": true}
+	negWords := map[string]bool{"lambat": true, "lama": true, "perbaikan": true, "kecewa": true, "bad": true, "worst": true, "terrible": true, "slow": true}
 
 	sentiment := ReviewSentiment{}
 	wordCount := map[string]int{}
@@ -759,7 +970,7 @@ func AnalyzeReviews(business string) *ReviewResult {
 	}
 
 	var entities []ReviewEntity
-	for _, phrase := range []string{"Brewok Prime", "Malang", "Kopi", "Barista", "Cozy"} {
+	for _, phrase := range []string{business, "Malang", "Kopi", "Barista", "Cozy"} {
 		entities = append(entities, ReviewEntity{Word: phrase, Count: 1, Type: "Brand"})
 	}
 
@@ -774,12 +985,12 @@ func AnalyzeReviews(business string) *ReviewResult {
 	case score >= 40: label = "Fair"
 	}
 
-	rating := 0.0
-	if total > 0 {
+	rating := place.Rating
+	if rating == 0 {
 		rating = float64(sentiment.Positive*5) / float64(total)
 	}
 
-	schema := fmt.Sprintf(`{"@context":"https://schema.org","@type":"LocalBusiness","name":"%s","aggregateRating":{"@type":"AggregateRating","ratingValue":"%.1f","reviewCount":"%d"}}`, business, rating, total)
+	schema := fmt.Sprintf(`{"@context":"https://schema.org","@type":"LocalBusiness","name":"%s","aggregateRating":{"@type":"AggregateRating","ratingValue":"%.1f","reviewCount":"%d"}}`, business, rating, len(reviews))
 
 	ideas := []string{
 		"Buat konten tentang menu favorit dari review customer",

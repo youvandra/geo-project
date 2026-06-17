@@ -1,0 +1,169 @@
+{{define "content"}}
+<script>
+function fillReportExample() {
+  document.querySelector('[name="brand"]').value = 'Brewok Prime';
+  document.querySelector('[name="city"]').value = 'Malang';
+}
+</script>
+
+<h2 class="text-2xl font-bold mb-4">GEO Comprehensive Report</h2>
+<p class="text-gray-500 mb-6">Combine all GEO tools into one complete action plan.</p>
+
+<form hx-post="/report" hx-target="#result" hx-indicator="#loading" class="mb-6">
+  <div class="flex gap-2 mb-2">
+    <input type="text" name="brand" placeholder="Brand name"
+      class="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+    <input type="text" name="city" placeholder="City"
+      class="w-48 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+  </div>
+  <div class="flex gap-2">
+    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap">Generate Report</button>
+    <button type="button" onclick="fillReportExample()" class="px-3 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 whitespace-nowrap">Try Example</button>
+  </div>
+</form>
+
+<div id="loading" class="hidden text-blue-600 mb-4">Generating report...</div>
+<div id="result">
+  {{if .Error}}
+    <div class="bg-red-50 text-red-600 p-4 rounded-lg mb-4">{{.Error}}</div>
+  {{end}}
+  {{if .Result}}
+    {{template "report-result" .}}
+  {{end}}
+</div>
+{{end}}
+
+{{define "report-result"}}
+{{with .Result}}
+<div class="space-y-6">
+  <div class="bg-white p-6 rounded-lg shadow">
+    <h3 class="text-xl font-bold mb-2">GEO Report: {{.brand}}</h3>
+    <p class="text-sm text-gray-500">City: {{.city}} | Generated at {{$.Time}}</p>
+  </div>
+
+  {{with .audit}}
+  <div class="bg-white p-6 rounded-lg shadow border-l-4
+    {{if eq .Label "Excellent"}}border-green-500
+    {{else if eq .Label "Good"}}border-blue-500
+    {{else if eq .Label "Fair"}}border-yellow-500
+    {{else}}border-red-500{{end}}">
+    <div class="flex justify-between items-center mb-3">
+      <h4 class="text-lg font-semibold">GEO Audit</h4>
+      <span class="px-3 py-1 rounded-full text-sm
+        {{if eq .Label "Excellent"}}bg-green-100 text-green-700
+        {{else if eq .Label "Good"}}bg-blue-100 text-blue-700
+        {{else if eq .Label "Fair"}}bg-yellow-100 text-yellow-700
+        {{else}}bg-red-100 text-red-700{{end}}">
+        {{.Label}} ({{.TotalScore}}/100)
+      </span>
+    </div>
+    <div class="grid grid-cols-4 gap-2 mb-3 text-center text-sm">
+      <div class="bg-gray-50 p-2 rounded">Entity {{.EntityScore}}/25</div>
+      <div class="bg-gray-50 p-2 rounded">Authority {{.AuthorityScore}}/30</div>
+      <div class="bg-gray-50 p-2 rounded">Citation {{.CitationScore}}/25</div>
+      <div class="bg-gray-50 p-2 rounded">Structure {{.StructureScore}}/20</div>
+    </div>
+    {{if .Suggestions}}
+    <ul class="text-sm text-gray-600 space-y-1">
+      {{range .Suggestions}}<li class="flex items-start gap-2"><span class="text-blue-500">&#x2022;</span>{{.}}</li>{{end}}
+    </ul>
+    {{end}}
+  </div>
+  {{end}}
+
+  {{with .crawl}}
+  <div class="bg-white p-6 rounded-lg shadow border-l-4
+    {{if eq .Label "Strong Presence"}}border-green-500
+    {{else if eq .Label "Moderate Presence"}}border-blue-500
+    {{else}}border-yellow-500{{end}}">
+    <div class="flex justify-between items-center mb-3">
+      <h4 class="text-lg font-semibold">Digital Presence Crawl</h4>
+      <span class="px-3 py-1 rounded-full text-sm
+        {{if eq .Label "Strong Presence"}}bg-green-100 text-green-700
+        {{else if eq .Label "Moderate Presence"}}bg-blue-100 text-blue-700
+        {{else}}bg-yellow-100 text-yellow-700{{end}}">
+        {{.Label}} ({{.Score}}/100)
+      </span>
+    </div>
+    <div class="text-sm text-gray-500 mb-2">{{.TotalHits}} of {{len .Sources}} sources found</div>
+    <div class="space-y-1">
+      {{range .Sources}}
+      <div class="flex items-center gap-2 text-sm">
+        <span>{{if .Found}}&#9989;{{else}}&#10060;{{end}}</span>
+        <span>{{.Source}}</span>
+        {{if .Title}}<span class="text-gray-400">: {{.Title}}</span>{{end}}
+      </div>
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+
+  {{with .local}}
+  <div class="bg-white p-6 rounded-lg shadow border-l-4
+    {{if eq .Label "Excellent"}}border-green-500
+    {{else if eq .Label "Good"}}border-blue-500
+    {{else}}border-yellow-500{{end}}">
+    <div class="flex justify-between items-center mb-3">
+      <h4 class="text-lg font-semibold">Local GEO</h4>
+      <span class="px-3 py-1 rounded-full text-sm
+        {{if eq .Label "Excellent"}}bg-green-100 text-green-700
+        {{else if eq .Label "Good"}}bg-blue-100 text-blue-700
+        {{else}}bg-yellow-100 text-yellow-700{{end}}">
+        {{.Label}} ({{.Score}}/{{.MaxScore}})
+      </span>
+    </div>
+    <div class="flex flex-wrap gap-2 mb-3">
+      {{range .EntityCluster}}<span class="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded">{{.}}</span>{{end}}
+    </div>
+    <details>
+      <summary class="text-sm text-blue-600 cursor-pointer">Lihat checklist ({{len .Checklist}} items)</summary>
+      <ul class="text-sm text-gray-600 mt-2 space-y-1">
+        {{range .Checklist}}<li class="flex items-center gap-2"><span>&#x2610;</span>{{.Task}} <span class="text-xs text-gray-400">({{.Impact}})</span></li>{{end}}
+      </ul>
+    </details>
+  </div>
+  {{end}}
+
+  {{with .review}}
+  <div class="bg-white p-6 rounded-lg shadow border-l-4
+    {{if eq .Label "Excellent"}}border-green-500
+    {{else if eq .Label "Good"}}border-blue-500
+    {{else if eq .Label "Fair"}}border-yellow-500
+    {{else}}border-red-500{{end}}">
+    <div class="flex justify-between items-center mb-3">
+      <h4 class="text-lg font-semibold">Review Analysis</h4>
+      <span class="px-3 py-1 rounded-full text-sm
+        {{if eq .Label "Excellent"}}bg-green-100 text-green-700
+        {{else if eq .Label "Good"}}bg-blue-100 text-blue-700
+        {{else if eq .Label "Fair"}}bg-yellow-100 text-yellow-700
+        {{else}}bg-red-100 text-red-700{{end}}">
+        {{.Label}} ({{.Score}}/100)
+      </span>
+    </div>
+    <div class="grid grid-cols-3 gap-2 mb-3 text-center text-sm">
+      <div class="bg-green-50 p-2 rounded">Positive: {{.Sentiment.Positive}}</div>
+      <div class="bg-gray-50 p-2 rounded">Neutral: {{.Sentiment.Neutral}}</div>
+      <div class="bg-red-50 p-2 rounded">Negative: {{.Sentiment.Negative}}</div>
+    </div>
+    <ul class="text-sm text-gray-600 space-y-1">
+      {{range .ContentIdeas}}<li class="flex items-start gap-2"><span class="text-blue-500">&#x2022;</span>{{.}}</li>{{end}}
+    </ul>
+  </div>
+  {{end}}
+
+  <div class="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg shadow">
+    <h4 class="text-lg font-semibold mb-2">Prioritas Action Items</h4>
+    <ol class="list-decimal list-inside text-sm text-gray-700 space-y-2">
+      <li><strong>Google Business Profile</strong> — Verifikasi dan lengkapi profil</li>
+      <li><strong>Website + Schema</strong> — Pastikan LocalBusiness + Menu schema terpasang</li>
+      <li><strong>Kumpulkan Review</strong> — Target minimal 50 review dengan rating &gt; 4.0</li>
+      <li><strong>Nap Consistency</strong> — Nama, alamat, telepon konsisten di semua platform</li>
+      <li><strong>Wikipedia/Wikidata</strong> — Buat halaman jika belum ada</li>
+      <li><strong>FQA Content</strong> — Buat FAQ berdasarkan review customer</li>
+      <li><strong>Backlink Lokal</strong> — Guest post atau mention di media lokal Malang</li>
+      <li><strong>Social Media</strong> — Aktif di IG/TikTok dengan konten berkualitas</li>
+    </ol>
+  </div>
+</div>
+{{end}}
+{{end}}
