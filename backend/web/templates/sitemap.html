@@ -1,0 +1,42 @@
+{{define "content"}}
+<h2 class="text-2xl font-bold mb-4">Sitemap Generator</h2>
+<p class="text-gray-500 mb-6">Generate XML sitemaps optimized for AI crawlers.</p>
+
+<form hx-post="/sitemap" hx-target="#result" hx-indicator="#loading" class="mb-6 space-y-3">
+  <div>
+    <label class="block text-sm font-medium mb-1">Base URL</label>
+    <input type="url" name="base_url" placeholder="https://example.com" required
+      class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+  </div>
+  <div>
+    <label class="block text-sm font-medium mb-1">Content Directory (server path)</label>
+    <input type="text" name="content_dir" placeholder="/path/to/content" required
+      class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+  </div>
+  <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Generate</button>
+</form>
+
+<div id="loading" class="hidden text-blue-600 mb-4">Generating...</div>
+<div id="result">
+  {{if .Error}}
+    <div class="bg-red-50 text-red-600 p-4 rounded-lg mb-4">{{.Error}}</div>
+  {{end}}
+  {{if .Result}}
+    {{template "sitemap-result" .}}
+  {{end}}
+</div>
+{{end}}
+
+{{define "sitemap-result"}}
+<div class="bg-white p-6 rounded-lg shadow">
+  {{with .Result}}
+  <div class="mb-4">
+    <p class="font-medium">Base URL: <span class="text-blue-600">{{.BaseURL}}</span></p>
+    <p class="text-sm text-gray-500">URLs generated: {{.TotalURLs}}</p>
+  </div>
+  {{end}}
+  <p class="text-sm text-gray-400">
+    For full sitemap generation with file scanning, use the CLI tool: <code class="bg-gray-100 px-2 py-0.5 rounded">geo sitemap</code>
+  </p>
+</div>
+{{end}}

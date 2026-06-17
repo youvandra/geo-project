@@ -1,0 +1,41 @@
+{{define "content"}}
+<h2 class="text-2xl font-bold mb-4">Entity Linker</h2>
+<p class="text-gray-500 mb-6">Extract and link entities from content to Knowledge Graph.</p>
+
+<form hx-post="/entity" hx-target="#result" hx-indicator="#loading" class="mb-6">
+  <textarea name="content" rows="6" placeholder="Paste content with entities to link..." required
+    class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 font-mono text-sm"></textarea>
+  <button type="submit" class="mt-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Link Entities</button>
+</form>
+
+<div id="loading" class="hidden text-blue-600 mb-4">Linking...</div>
+<div id="result">
+  {{if .Error}}
+    <div class="bg-red-50 text-red-600 p-4 rounded-lg mb-4">{{.Error}}</div>
+  {{end}}
+  {{if .Result}}
+    {{template "entity-result" .}}
+  {{end}}
+</div>
+{{end}}
+
+{{define "entity-result"}}
+<div class="bg-white p-6 rounded-lg shadow">
+  {{with .Result}}
+  <p class="text-sm text-gray-500 mb-4">Found {{len .Entities}} linked entities</p>
+  <div class="space-y-3">
+    {{range .Entities}}
+    <div class="p-3 bg-gray-50 rounded">
+      <div class="flex items-center justify-between">
+        <span class="font-medium">{{.Name}}</span>
+        <span class="text-xs px-2 py-0.5 rounded {{if eq .Confidence "high"}}bg-green-100 text-green-700{{else}}bg-yellow-100 text-yellow-700{{end}}">{{.Confidence}}</span>
+      </div>
+      <p class="text-sm text-gray-600 mt-1">{{.Description}}</p>
+      <a href="{{.WikipediaURL}}" target="_blank" class="text-xs text-blue-600 hover:underline mt-1 inline-block">{{.WikipediaURL}}</a>
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+  <p class="text-xs text-gray-400 mt-4">Analyzed at {{.Time}}</p>
+</div>
+{{end}}

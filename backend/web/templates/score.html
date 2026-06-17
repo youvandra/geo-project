@@ -1,0 +1,52 @@
+{{define "content"}}
+<h2 class="text-2xl font-bold mb-4">GEO Readability Score</h2>
+<p class="text-gray-500 mb-6">Analyze how RAG-friendly your content is across 6 dimensions.</p>
+
+<form hx-post="/score" hx-target="#result" hx-indicator="#loading" class="mb-6">
+  <textarea name="content" rows="8" placeholder="Paste your content here..." required
+    class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 font-mono text-sm"></textarea>
+  <button type="submit" class="mt-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Score</button>
+</form>
+
+<div id="loading" class="hidden text-blue-600 mb-4">Scoring...</div>
+<div id="result">
+  {{if .Error}}
+    <div class="bg-red-50 text-red-600 p-4 rounded-lg mb-4">{{.Error}}</div>
+  {{end}}
+  {{if .Result}}
+    {{template "score-result" .}}
+  {{end}}
+</div>
+{{end}}
+
+{{define "score-result"}}
+<div class="bg-white p-6 rounded-lg shadow mb-4">
+  {{with .Result}}
+  <div class="text-center mb-6">
+    <div class="text-4xl font-bold {{if ge .Overall.Score 60}}text-green-600{{else if ge .Overall.Score 40}}text-yellow-600{{else}}text-red-600{{end}}">
+      {{.Overall.Score}}<span class="text-lg text-gray-400">/{{.Overall.Max}}</span>
+    </div>
+    <div class="text-lg font-medium mt-1">{{.Overall.Label}}</div>
+  </div>
+  <div class="space-y-3">
+    {{with .Breakdown}}
+    <div><span class="font-medium">Structure:</span> {{.Structure.Label}} ({{.Structure.Score}}/{{.Structure.Max}})</div>
+    <div><span class="font-medium">Q&A Coverage:</span> {{.QACoverage.Label}} ({{.QACoverage.Score}}/{{.QACoverage.Max}})</div>
+    <div><span class="font-medium">Entity Richness:</span> {{.EntityRichness.Label}} ({{.EntityRichness.Score}}/{{.EntityRichness.Max}})</div>
+    <div><span class="font-medium">Citation Quality:</span> {{.CitationQuality.Label}} ({{.CitationQuality.Score}}/{{.CitationQuality.Max}})</div>
+    <div><span class="font-medium">Schema Readiness:</span> {{.SchemaReadiness.Label}} ({{.SchemaReadiness.Score}}/{{.SchemaReadiness.Max}})</div>
+    <div><span class="font-medium">Readability:</span> {{.Readability.Label}} ({{.Readability.Score}}/{{.Readability.Max}})</div>
+    {{end}}
+  </div>
+  {{if .Suggestion}}
+  <div class="mt-4 p-3 bg-yellow-50 rounded">
+    <p class="font-medium text-sm text-yellow-800 mb-2">Suggestions:</p>
+    <ul class="text-sm text-yellow-700 list-disc list-inside">
+      {{range .Suggestion}}<li>{{.}}</li>{{end}}
+    </ul>
+  </div>
+  {{end}}
+  {{end}}
+  <p class="text-xs text-gray-400 mt-4">Scored at {{.Time}}</p>
+</div>
+{{end}}

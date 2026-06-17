@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{.Title}} — GEO Dashboard</title>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen">
+  <nav class="bg-white border-b shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="/" class="text-xl font-bold text-blue-600">GEO Dashboard</a>
+      <div class="flex gap-4 text-sm">
+        <a href="/topic" class="hover:text-blue-600">Topic</a>
+        <a href="/score" class="hover:text-blue-600">Score</a>
+        <a href="/schema" class="hover:text-blue-600">Schema</a>
+        <a href="/entity" class="hover:text-blue-600">Entity</a>
+        <a href="/tracker" class="hover:text-blue-600">Tracker</a>
+        <a href="/sitemap" class="hover:text-blue-600">Sitemap</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-4xl mx-auto px-4 py-6">
+    {{block "content" .}}{{end}}
+  </main>
+
+  <footer class="text-center text-gray-400 text-xs py-6">
+    GEO Project — Learning Generative Engine Optimization A-Z
+  </footer>
+</body>
+</html>

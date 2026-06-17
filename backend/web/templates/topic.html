@@ -1,0 +1,53 @@
+{{define "content"}}
+<h2 class="text-2xl font-bold mb-4">Topic Cluster Analyzer</h2>
+<p class="text-gray-500 mb-6">Analyze a topic and discover related entities, subtopics, and GEO questions.</p>
+
+<form hx-post="/topic" hx-target="#result" hx-indicator="#loading" class="mb-6">
+  <div class="flex gap-2">
+    <input type="text" name="topic" placeholder="Enter a topic" required
+      class="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Analyze</button>
+  </div>
+</form>
+
+<div id="loading" class="hidden text-blue-600 mb-4">Analyzing...</div>
+<div id="result">
+  {{if .Error}}
+    <div class="bg-red-50 text-red-600 p-4 rounded-lg mb-4">{{.Error}}</div>
+  {{end}}
+  {{if .Result}}
+    {{template "topic-result" .}}
+  {{end}}
+</div>
+{{end}}
+
+{{define "topic-result"}}
+<div class="bg-white p-6 rounded-lg shadow">
+  {{with .Result}}
+  <h3 class="text-lg font-semibold mb-2">{{.Topic}}</h3>
+  <p class="text-gray-600 text-sm mb-4">{{.Description}}</p>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div>
+      <h4 class="font-medium mb-2">Subtopics</h4>
+      <ul class="text-sm text-gray-600 list-disc list-inside">
+        {{range .Subtopics}}<li>{{.}}</li>{{else}}<li class="text-gray-400">None found</li>{{end}}
+      </ul>
+    </div>
+    <div>
+      <h4 class="font-medium mb-2">Related Entities</h4>
+      <ul class="text-sm text-gray-600">
+        {{range .Entities}}<li><span class="font-mono text-xs bg-gray-100 px-1 rounded">{{.Name}}</span> ({{.Relevance}})</li>{{else}}<li class="text-gray-400">None found</li>{{end}}
+      </ul>
+    </div>
+    <div>
+      <h4 class="font-medium mb-2">GEO Questions</h4>
+      <ul class="text-sm text-gray-600 list-disc list-inside">
+        {{range .Questions}}<li>{{.}}</li>{{end}}
+      </ul>
+    </div>
+  </div>
+  {{end}}
+  <p class="text-xs text-gray-400 mt-4">Analyzed at {{.Time}}</p>
+</div>
+{{end}}
