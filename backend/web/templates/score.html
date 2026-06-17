@@ -1,11 +1,24 @@
 {{define "content"}}
+<script>
+function fillExample(btn, field, val) {
+  btn.previousElementSibling.querySelector('[name="' + field + '"]').value = val;
+}
+</script>
+
 <h2 class="text-2xl font-bold mb-4">GEO Readability Score</h2>
 <p class="text-gray-500 mb-6">Analyze how RAG-friendly your content is across 6 dimensions.</p>
 
 <form hx-post="/score" hx-target="#result" hx-indicator="#loading" class="mb-6">
-  <textarea name="content" rows="8" placeholder="Paste your content here..." required
+  <textarea name="content" rows="8" placeholder='Paste your content here...
+
+Example:
+# What is GEO?
+Generative Engine Optimization (GEO) is the practice of optimizing content for AI-powered search engines...' required
     class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 font-mono text-sm"></textarea>
-  <button type="submit" class="mt-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Score</button>
+  <div class="flex gap-2 mt-2">
+    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Score</button>
+    <button type="button" onclick="this.form.content.value = '# What is GEO?\n\nGenerative Engine Optimization (GEO) is the practice of optimizing content for AI-powered search engines. According to a 2024 Princeton study, GEO can increase visibility in AI answers by up to 40%.\n\n## How does GEO work?\nGEO focuses on three key areas:\n- Content structure for RAG systems\n- Entity optimization\n- Citation quality\n\n## Why is GEO important?\nWith the rise of ChatGPT and Gemini, traditional SEO is no longer enough.\n\n## References\n- Princeton University (2024). GEO Study\n- Google AI Overviews Documentation'" class="px-3 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">Try Example</button>
+  </div>
 </form>
 
 <div id="loading" class="hidden text-blue-600 mb-4">Scoring...</div>

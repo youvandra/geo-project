@@ -1,6 +1,12 @@
 {{define "content"}}
+<script>
+function fillExample(btn, field, val) {
+  btn.previousElementSibling.querySelector('[name="' + field + '"]').value = val;
+}
+</script>
+
 <h2 class="text-2xl font-bold mb-4">Sitemap Generator</h2>
-<p class="text-gray-500 mb-6">Generate XML sitemaps optimized for AI crawlers.</p>
+<p class="text-gray-500 mb-6">Generate XML sitemaps optimized for AI crawlers. Untuk file scanning penuh, pakai CLI: <code class="bg-gray-100 px-1 rounded">geo sitemap</code></p>
 
 <form hx-post="/sitemap" hx-target="#result" hx-indicator="#loading" class="mb-6 space-y-3">
   <div>
@@ -13,7 +19,10 @@
     <input type="text" name="content_dir" placeholder="/path/to/content" required
       class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
   </div>
-  <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Generate</button>
+  <div class="flex gap-2">
+    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Generate</button>
+    <button type="button" onclick="this.form.base_url.value='https://geo-project.example.com';this.form.content_dir.value='/Users/youvandra/Documents/Personal/geo-project/blog/content'" class="px-3 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">Try Example</button>
+  </div>
 </form>
 
 <div id="loading" class="hidden text-blue-600 mb-4">Generating...</div>
@@ -36,7 +45,7 @@
   </div>
   {{end}}
   <p class="text-sm text-gray-400">
-    For full sitemap generation with file scanning, use the CLI tool: <code class="bg-gray-100 px-2 py-0.5 rounded">geo sitemap</code>
+    Gunakan CLI untuk full file scanning: <code class="bg-gray-100 px-2 py-0.5 rounded">geo sitemap https://example.com ./blog/content -o sitemap.xml</code>
   </p>
 </div>
 {{end}}
