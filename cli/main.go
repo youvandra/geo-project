@@ -7,6 +7,7 @@ import (
 	"github.com/kucnigplaygame/geo-project/cli/cmdentity"
 	"github.com/kucnigplaygame/geo-project/cli/cmdschema"
 	"github.com/kucnigplaygame/geo-project/cli/cmdscore"
+	"github.com/kucnigplaygame/geo-project/cli/cmdsitemap"
 	"github.com/kucnigplaygame/geo-project/cli/cmdtopic"
 	"github.com/kucnigplaygame/geo-project/cli/cmdtracker"
 )
@@ -42,7 +43,7 @@ func main() {
 	case "tracker":
 		cmdtracker.Run(args)
 	case "sitemap":
-		fmt.Println("geo-sitemap: not yet implemented")
+		cmdsitemap.Run(args)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", cmd)
 		os.Exit(1)
