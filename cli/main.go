@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/kucnigplaygame/geo-project/cli/cmdschema"
 	"github.com/kucnigplaygame/geo-project/cli/cmdscore"
 	"github.com/kucnigplaygame/geo-project/cli/cmdtopic"
 )
@@ -33,7 +34,7 @@ func main() {
 	case "score":
 		cmdscore.Run(args)
 	case "schema":
-		fmt.Println("geo-schema: not yet implemented")
+		cmdschema.Run(args)
 	case "entity":
 		fmt.Println("geo-entity: not yet implemented")
 	case "tracker":
