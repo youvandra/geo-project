@@ -8,6 +8,7 @@ import (
 	"github.com/kucnigplaygame/geo-project/cli/cmdschema"
 	"github.com/kucnigplaygame/geo-project/cli/cmdscore"
 	"github.com/kucnigplaygame/geo-project/cli/cmdtopic"
+	"github.com/kucnigplaygame/geo-project/cli/cmdtracker"
 )
 
 func main() {
@@ -39,7 +40,7 @@ func main() {
 	case "entity":
 		cmdentity.Run(args)
 	case "tracker":
-		fmt.Println("geo-tracker: not yet implemented")
+		cmdtracker.Run(args)
 	case "sitemap":
 		fmt.Println("geo-sitemap: not yet implemented")
 	default:
