@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/kucnigplaygame/geo-project/cli/cmdtopic"
 )
 
 func main() {
@@ -22,9 +24,11 @@ func main() {
 	}
 
 	cmd := os.Args[1]
+	args := os.Args[2:]
+
 	switch cmd {
 	case "topic":
-		fmt.Println("geo-topic: not yet implemented")
+		cmdtopic.Run(args)
 	case "score":
 		fmt.Println("geo-score: not yet implemented")
 	case "schema":
