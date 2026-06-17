@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/kucnigplaygame/geo-project/cli/cmdscore"
 	"github.com/kucnigplaygame/geo-project/cli/cmdtopic"
 )
 
@@ -30,7 +31,7 @@ func main() {
 	case "topic":
 		cmdtopic.Run(args)
 	case "score":
-		fmt.Println("geo-score: not yet implemented")
+		cmdscore.Run(args)
 	case "schema":
 		fmt.Println("geo-schema: not yet implemented")
 	case "entity":
