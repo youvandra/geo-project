@@ -1,11 +1,4 @@
-.PHONY: blog blog-dev build-cli build-backend docker-up clean
-
-# Blog
-blog:
-	cd blog && hugo
-
-blog-dev:
-	cd blog && hugo server -D
+.PHONY: build-cli build-backend run-backend dev docker-up docker-down clean all
 
 # CLI
 build-cli:
@@ -18,6 +11,12 @@ build-backend:
 run-backend:
 	cd backend && go run ./cmd/server/
 
+# Dev — run both with hot-reload (requires nodemon/entr)
+dev:
+	@echo "To run both:"
+	@echo "  make run-backend  (dashboard at :8080)"
+	@echo "  make build-cli    (CLI tools)"
+
 # Docker
 docker-up:
 	docker compose up -d
@@ -27,6 +26,6 @@ docker-down:
 
 # Misc
 clean:
-	rm -rf bin/ blog/public/
+	rm -rf bin/
 
 all: build-cli build-backend
