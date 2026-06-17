@@ -1,3 +1,6 @@
+-include .env
+export
+
 .PHONY: build-cli build-backend run-backend dev docker-up docker-down clean all
 
 # CLI
@@ -10,6 +13,10 @@ build-backend:
 
 run-backend:
 	cd backend && go run ./cmd/server/
+
+# Run CLI with .env loaded
+run-cli:
+	./bin/geo $(filter-out $@,$(MAKECMDGOALS))
 
 # Dev — run both with hot-reload (requires nodemon/entr)
 dev:

@@ -1,13 +1,47 @@
 package main
 
 import (
+	"bufio"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/kucnigplaygame/geo-project/backend/internal/api"
 	"github.com/kucnigplaygame/geo-project/backend/internal/db"
 )
+
+func init() {
+	loadEnv()
+}
+
+func loadEnv() {
+	paths := []string{".env", "../.env", filepath.Join(os.Getenv("HOME"), ".geo-env")}
+	for _, p := range paths {
+		f, err := os.Open(p)
+		if err != nil {
+			continue
+		}
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				key := strings.TrimSpace(parts[0])
+				val := strings.TrimSpace(parts[1])
+				if os.Getenv(key) == "" {
+					os.Setenv(key, val)
+				}
+			}
+		}
+		break
+	}
+}
 
 func main() {
 	port := os.Getenv("PORT")
