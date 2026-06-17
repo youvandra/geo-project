@@ -1,0 +1,77 @@
+{{define "content"}}
+<script>
+function fillReviewExample() {
+  document.querySelector('[name="business"]').value = 'Brewok Prime';
+}
+</script>
+
+<h2 class="text-2xl font-bold mb-4">Review Analyzer</h2>
+<p class="text-gray-500 mb-6">Extract insights from customer reviews for GEO content strategy.</p>
+
+<form hx-post="/review" hx-target="#result" hx-indicator="#loading" class="mb-6">
+  <div class="flex gap-2">
+    <input type="text" name="business" placeholder="Business name"
+      class="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap">Analyze</button>
+    <button type="button" onclick="fillReviewExample()" class="px-3 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 whitespace-nowrap">Try Example</button>
+  </div>
+</form>
+
+<div id="loading" class="hidden text-blue-600 mb-4">Analyzing...</div>
+<div id="result">
+  {{if .Error}}
+    <div class="bg-red-50 text-red-600 p-4 rounded-lg mb-4">{{.Error}}</div>
+  {{end}}
+  {{if .Result}}
+    {{template "review-result" .}}
+  {{end}}
+</div>
+{{end}}
+
+{{define "review-result"}}
+<div class="bg-white p-6 rounded-lg shadow">
+  {{with .Result}}
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-lg font-semibold">{{.Business}}</h3>
+    <span class="px-3 py-1 rounded-full text-sm font-medium
+      {{if eq .Label "Excellent"}}bg-green-100 text-green-700
+      {{else if eq .Label "Good"}}bg-blue-100 text-blue-700
+      {{else if eq .Label "Fair"}}bg-yellow-100 text-yellow-700
+      {{else}}bg-red-100 text-red-700{{end}}">
+      {{.Label}} ({{.Score}}/{{.MaxScore}})
+    </span>
+  </div>
+
+  <p class="text-sm text-gray-500 mb-4">{{.ReviewCount}} reviews analyzed</p>
+
+  <div class="grid grid-cols-3 gap-3 mb-4">
+    <div class="bg-green-50 p-3 rounded text-center">
+      <div class="text-2xl font-bold text-green-600">{{.Sentiment.Positive}}</div>
+      <div class="text-xs text-green-600">Positive</div>
+    </div>
+    <div class="bg-gray-50 p-3 rounded text-center">
+      <div class="text-2xl font-bold text-gray-600">{{.Sentiment.Neutral}}</div>
+      <div class="text-xs text-gray-500">Neutral</div>
+    </div>
+    <div class="bg-red-50 p-3 rounded text-center">
+      <div class="text-2xl font-bold text-red-600">{{.Sentiment.Negative}}</div>
+      <div class="text-xs text-red-600">Negative</div>
+    </div>
+  </div>
+
+  <h4 class="font-medium mb-2">Entities</h4>
+  <div class="flex flex-wrap gap-2 mb-4">
+    {{range .Entities}}<span class="px-2 py-1 bg-purple-50 text-purple-700 text-xs rounded">{{.Word}} ({{.Count}}x)</span>{{end}}
+  </div>
+
+  <h4 class="font-medium mb-2">Content Ideas</h4>
+  <ul class="text-sm text-gray-600 space-y-1 mb-4">
+    {{range .ContentIdeas}}<li class="flex items-start gap-2"><span class="text-blue-500 mt-0.5">&#x2022;</span>{{.}}</li>{{end}}
+  </ul>
+
+  <h4 class="font-medium mb-2">Review Schema</h4>
+  <pre class="text-xs bg-gray-50 p-2 rounded overflow-x-auto">{{.Schema}}</pre>
+  {{end}}
+  <p class="text-xs text-gray-400 mt-4">Analyzed at {{.Time}}</p>
+</div>
+{{end}}

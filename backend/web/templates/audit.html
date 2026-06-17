@@ -1,0 +1,82 @@
+{{define "content"}}
+<script>
+function fillAuditExample() {
+  document.querySelector('[name="brand"]').value = 'Brewok Prime Malang';
+}
+</script>
+
+<h2 class="text-2xl font-bold mb-4">AI Answer Auditor</h2>
+<p class="text-gray-500 mb-6">Check how ready your brand is to appear in AI search answers.</p>
+
+<form hx-post="/audit" hx-target="#result" hx-indicator="#loading" class="mb-6">
+  <div class="flex gap-2">
+    <input type="text" name="brand" placeholder="e.g. Brewok Prime Malang"
+      class="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap">Audit</button>
+    <button type="button" onclick="fillAuditExample()" class="px-3 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 whitespace-nowrap">Try Example</button>
+  </div>
+</form>
+
+<div id="loading" class="hidden text-blue-600 mb-4">Auditing...</div>
+<div id="result">
+  {{if .Error}}
+    <div class="bg-red-50 text-red-600 p-4 rounded-lg mb-4">{{.Error}}</div>
+  {{end}}
+  {{if .Result}}
+    {{template "audit-result" .}}
+  {{end}}
+</div>
+{{end}}
+
+{{define "audit-result"}}
+<div class="bg-white p-6 rounded-lg shadow">
+  {{with .Result}}
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-lg font-semibold">{{.Brand}}</h3>
+    <span class="px-3 py-1 rounded-full text-sm font-medium
+      {{if eq .Label "Excellent"}}bg-green-100 text-green-700
+      {{else if eq .Label "Good"}}bg-blue-100 text-blue-700
+      {{else if eq .Label "Fair"}}bg-yellow-100 text-yellow-700
+      {{else}}bg-red-100 text-red-700{{end}}">
+      {{.Label}} ({{.TotalScore}}/{{.MaxScore}})
+    </span>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+    <div class="bg-gray-50 p-3 rounded">
+      <div class="text-xs text-gray-500">Entity</div>
+      <div class="text-lg font-semibold">{{.EntityScore}}/25</div>
+    </div>
+    <div class="bg-gray-50 p-3 rounded">
+      <div class="text-xs text-gray-500">Authority</div>
+      <div class="text-lg font-semibold">{{.AuthorityScore}}/30</div>
+    </div>
+    <div class="bg-gray-50 p-3 rounded">
+      <div class="text-xs text-gray-500">Citation</div>
+      <div class="text-lg font-semibold">{{.CitationScore}}/25</div>
+    </div>
+    <div class="bg-gray-50 p-3 rounded">
+      <div class="text-xs text-gray-500">Structure</div>
+      <div class="text-lg font-semibold">{{.StructureScore}}/20</div>
+    </div>
+  </div>
+
+  {{if .OnWikipedia}}
+  <div class="mb-4">
+    <span class="text-green-600 font-medium">Wikipedia:</span>
+    <span class="text-gray-600">{{.WikiTitle}}</span>
+  </div>
+  {{end}}
+
+  {{if .Suggestions}}
+  <div>
+    <h4 class="font-medium mb-2">Suggestions</h4>
+    <ul class="text-sm text-gray-600 space-y-1">
+      {{range .Suggestions}}<li class="flex items-start gap-2"><span class="text-blue-500 mt-0.5">&#x2022;</span>{{.}}</li>{{end}}
+    </ul>
+  </div>
+  {{end}}
+  {{end}}
+  <p class="text-xs text-gray-400 mt-4">Analyzed at {{.Time}}</p>
+</div>
+{{end}}

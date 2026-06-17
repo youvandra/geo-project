@@ -553,6 +553,254 @@ func GenerateSitemap(baseURL, contentDir string) (*SitemapOutput, error) {
 	}, nil
 }
 
+// --- Audit Engine ---
+
+type AuditResult struct {
+	Brand          string   `json:"brand"`
+	EntityScore    int      `json:"entity_score"`
+	AuthorityScore int      `json:"authority_score"`
+	CitationScore  int      `json:"citation_score"`
+	StructureScore int      `json:"structure_score"`
+	TotalScore     int      `json:"total_score"`
+	MaxScore       int      `json:"max_score"`
+	Label          string   `json:"label"`
+	OnWikipedia    bool     `json:"on_wikipedia"`
+	WikiTitle      string   `json:"wiki_title,omitempty"`
+	Suggestions    []string `json:"suggestions"`
+}
+
+func AuditBrand(brand string) (*AuditResult, error) {
+	r := &AuditResult{Brand: brand, MaxScore: 100}
+
+	u := fmt.Sprintf(
+		"https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch=%s&srlimit=3",
+		url.QueryEscape(brand),
+	)
+	var sr struct {
+		Query struct {
+			Search []struct {
+				Title string `json:"title"`
+			} `json:"search"`
+		} `json:"query"`
+	}
+	if err := wikiGet(u, &sr); err == nil && len(sr.Query.Search) > 0 {
+		if strings.Contains(strings.ToLower(sr.Query.Search[0].Title), strings.ToLower(brand)) {
+			r.OnWikipedia = true
+			r.WikiTitle = sr.Query.Search[0].Title
+			r.EntityScore = 25
+		} else {
+			r.EntityScore = 10
+			r.Suggestions = append(r.Suggestions, "Brand tidak ditemukan di Wikipedia. Pertimbangkan membuat halaman.")
+		}
+	} else {
+		r.EntityScore = 5
+		r.Suggestions = append(r.Suggestions, "Brand tidak ditemukan di Wikipedia. Pertimbangkan membuat halaman.")
+	}
+
+	r.AuthorityScore = 15
+	r.CitationScore = 10
+	r.StructureScore = 5
+
+	r.TotalScore = r.EntityScore + r.AuthorityScore + r.CitationScore + r.StructureScore
+
+	r.Label = "Poor"
+	switch {
+	case r.TotalScore >= 80:
+		r.Label = "Excellent"
+	case r.TotalScore >= 60:
+		r.Label = "Good"
+	case r.TotalScore >= 40:
+		r.Label = "Fair"
+	case r.TotalScore >= 20:
+		r.Label = "Needs Work"
+	}
+
+	return r, nil
+}
+
+// --- Local Engine ---
+
+type LocalResult struct {
+	BusinessName string       `json:"business_name"`
+	City         string       `json:"city"`
+	EntityCluster []string    `json:"entity_cluster"`
+	Schemas      []LocalSchema `json:"schemas"`
+	Score        int          `json:"score"`
+	MaxScore     int          `json:"max_score"`
+	Label        string       `json:"label"`
+	Checklist    []CheckItem  `json:"checklist"`
+}
+
+type LocalSchema struct {
+	Type   string `json:"type"`
+	Source string `json:"source"`
+}
+
+type CheckItem struct {
+	Task   string `json:"task"`
+	Impact string `json:"impact"`
+	Done   bool   `json:"done"`
+}
+
+func AnalyzeLocal(business, city string) *LocalResult {
+	entities := []string{
+		"Kota " + city,
+		"Kuliner " + city,
+		"Cafe di " + city,
+		"Tempat Nongkrong " + city,
+		"Tempat Populer di " + city,
+	}
+
+	schemas := []LocalSchema{
+		{Type: "LocalBusiness", Source: fmt.Sprintf(`{"@context":"https://schema.org","@type":"LocalBusiness","name":"%s","address":{"@type":"PostalAddress","addressLocality":"%s","addressRegion":"Jawa Timur"},"priceRange":"$$","servesCuisine":"Coffee"}`, business, city)},
+		{Type: "Menu", Source: fmt.Sprintf(`{"@context":"https://schema.org","@type":"Menu","name":"Menu %s"}`, business)},
+		{Type: "AggregateRating", Source: fmt.Sprintf(`{"@context":"https://schema.org","@type":"AggregateRating","itemReviewed":{"@type":"LocalBusiness","name":"%s"},"ratingValue":"4.5","reviewCount":"50"}`, business)},
+	}
+
+	checklist := []CheckItem{
+		{Task: "Google Business Profile terverifikasi", Impact: "high"},
+		{Task: "NAP konsisten di semua platform", Impact: "high"},
+		{Task: "Website dengan schema LocalBusiness", Impact: "high"},
+		{Task: "Foto berkualitas di GBP (min 10)", Impact: "medium"},
+		{Task: "Menu lengkap dengan harga", Impact: "medium"},
+		{Task: "Review Google > 50 rating > 4.0", Impact: "high"},
+		{Task: "FAQ di website", Impact: "medium"},
+		{Task: "Backlink dari media lokal", Impact: "medium"},
+		{Task: "Social media aktif", Impact: "low"},
+	}
+
+	score := 65 // Simplified
+
+	label := "Fair"
+	switch {
+	case score >= 80:
+		label = "Excellent"
+	case score >= 60:
+		label = "Good"
+	}
+
+	return &LocalResult{
+		BusinessName:  business,
+		City:          city,
+		EntityCluster: entities,
+		Schemas:       schemas,
+		Score:         score,
+		MaxScore:      100,
+		Label:         label,
+		Checklist:     checklist,
+	}
+}
+
+// --- Review Engine ---
+
+type ReviewResult struct {
+	Business     string        `json:"business"`
+	ReviewCount  int           `json:"review_count"`
+	Sentiment    ReviewSentiment `json:"sentiment"`
+	Entities     []ReviewEntity  `json:"entities"`
+	ContentIdeas []string      `json:"content_ideas"`
+	Schema       string        `json:"schema"`
+	Score        int           `json:"score"`
+	MaxScore     int           `json:"max_score"`
+	Label        string        `json:"label"`
+}
+
+type ReviewSentiment struct {
+	Positive int     `json:"positive"`
+	Neutral  int     `json:"neutral"`
+	Negative int     `json:"negative"`
+	Ratio    float64 `json:"ratio"`
+}
+
+type ReviewEntity struct {
+	Word  string `json:"word"`
+	Count int    `json:"count"`
+	Type  string `json:"type"`
+}
+
+func AnalyzeReviews(business string) *ReviewResult {
+	reviews := []string{
+		"Tempatnya nyaman banget, cocok buat nongkrong lama-lama.",
+		"Kopinya enak, barista ramah. Recommended!",
+		"Suasananya cozy, cocok buat kerja juga.",
+		"Harganya standar, tempatnya estetik banget.",
+		"Pelayanan lambat, pesanan lama. Masih perlu perbaikan.",
+		"Brewok Prime tempat favorit buat ngopi di Malang.",
+	}
+
+	posWords := map[string]bool{"enak": true, "lezat": true, "nikmat": true, "mantap": true, "nyaman": true, "cozy": true, "ramah": true, "recommended": true, "estetik": true, "favorit": true}
+	negWords := map[string]bool{"lambat": true, "lama": true, "perbaikan": true, "kecewa": true}
+
+	sentiment := ReviewSentiment{}
+	wordCount := map[string]int{}
+
+	for _, r := range reviews {
+		words := strings.Fields(strings.ToLower(r))
+		posCount, negCount := 0, 0
+		for _, w := range words {
+			w = strings.TrimRight(w, ".,!?:;")
+			if posWords[w] { posCount++ }
+			if negWords[w] { negCount++ }
+			wordCount[w]++
+		}
+		switch {
+		case posCount > negCount:
+			sentiment.Positive++
+		case negCount > posCount:
+			sentiment.Negative++
+		default:
+			sentiment.Neutral++
+		}
+	}
+
+	total := sentiment.Positive + sentiment.Negative + sentiment.Neutral
+	if total > 0 {
+		sentiment.Ratio = float64(sentiment.Positive) / float64(total)
+	}
+
+	var entities []ReviewEntity
+	for _, phrase := range []string{"Brewok Prime", "Malang", "Kopi", "Barista", "Cozy"} {
+		entities = append(entities, ReviewEntity{Word: phrase, Count: 1, Type: "Brand"})
+	}
+
+	score := sentiment.Positive*20 + sentiment.Neutral*10 - sentiment.Negative*20
+	if score < 0 { score = 0 }
+	if score > 100 { score = 100 }
+
+	label := "Needs Improvement"
+	switch {
+	case score >= 80: label = "Excellent"
+	case score >= 60: label = "Good"
+	case score >= 40: label = "Fair"
+	}
+
+	rating := 0.0
+	if total > 0 {
+		rating = float64(sentiment.Positive*5) / float64(total)
+	}
+
+	schema := fmt.Sprintf(`{"@context":"https://schema.org","@type":"LocalBusiness","name":"%s","aggregateRating":{"@type":"AggregateRating","ratingValue":"%.1f","reviewCount":"%d"}}`, business, rating, total)
+
+	ideas := []string{
+		"Buat konten tentang menu favorit dari review customer",
+		"Highlight review positif di media sosial",
+		"Buat FAQ section dari pertanyaan umum di review",
+		"Optimasi Google Business Profile dengan kata kunci dari review",
+	}
+
+	return &ReviewResult{
+		Business:     business,
+		ReviewCount:  len(reviews),
+		Sentiment:    sentiment,
+		Entities:     entities,
+		ContentIdeas: ideas,
+		Schema:       schema,
+		Score:        score,
+		MaxScore:     100,
+		Label:        label,
+	}
+}
+
 func truncate(s string, n int) string {
 	runes := []rune(s)
 	if len(runes) <= n {

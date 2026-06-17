@@ -190,6 +190,84 @@ func HandleTrackerAnalyze(w http.ResponseWriter, r *http.Request) {
 	render(w, "tracker", data)
 }
 
+func HandleAuditForm(w http.ResponseWriter, r *http.Request) {
+	render(w, "audit", PageData{Title: "AI Answer Auditor"})
+}
+
+func HandleAuditAnalyze(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	brand := r.FormValue("brand")
+	if brand == "" {
+		render(w, "audit", PageData{Title: "AI Answer Auditor", Error: "Brand is required"})
+		return
+	}
+
+	result, err := engine.AuditBrand(brand)
+	if err != nil {
+		render(w, "audit", PageData{Title: "AI Answer Auditor", Error: err.Error()})
+		return
+	}
+
+	data := PageData{Title: "AI Answer Auditor", Result: result, Time: time.Now().Format(time.RFC3339)}
+
+	if r.Header.Get("HX-Request") == "true" {
+		tmpl, _ := template.ParseFiles("web/templates/audit.html")
+		tmpl.ExecuteTemplate(w, "audit-result", data)
+		return
+	}
+	render(w, "audit", data)
+}
+
+func HandleLocalForm(w http.ResponseWriter, r *http.Request) {
+	render(w, "local", PageData{Title: "Local Business GEO"})
+}
+
+func HandleLocalAnalyze(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	business := r.FormValue("business")
+	city := r.FormValue("city")
+	if business == "" {
+		render(w, "local", PageData{Title: "Local Business GEO", Error: "Business name is required"})
+		return
+	}
+	if city == "" {
+		city = "Malang"
+	}
+
+	result := engine.AnalyzeLocal(business, city)
+	data := PageData{Title: "Local Business GEO", Result: result, Time: time.Now().Format(time.RFC3339)}
+
+	if r.Header.Get("HX-Request") == "true" {
+		tmpl, _ := template.ParseFiles("web/templates/local.html")
+		tmpl.ExecuteTemplate(w, "local-result", data)
+		return
+	}
+	render(w, "local", data)
+}
+
+func HandleReviewForm(w http.ResponseWriter, r *http.Request) {
+	render(w, "review", PageData{Title: "Review Analyzer"})
+}
+
+func HandleReviewAnalyze(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	business := r.FormValue("business")
+	if business == "" {
+		render(w, "review", PageData{Title: "Review Analyzer", Error: "Business name is required"})
+		return
+	}
+
+	result := engine.AnalyzeReviews(business)
+	data := PageData{Title: "Review Analyzer", Result: result, Time: time.Now().Format(time.RFC3339)}
+
+	if r.Header.Get("HX-Request") == "true" {
+		tmpl, _ := template.ParseFiles("web/templates/review.html")
+		tmpl.ExecuteTemplate(w, "review-result", data)
+		return
+	}
+	render(w, "review", data)
+}
+
 func HandleSitemapForm(w http.ResponseWriter, r *http.Request) {
 	render(w, "sitemap", PageData{Title: "Sitemap Generator"})
 }

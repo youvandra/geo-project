@@ -37,6 +37,15 @@ func main() {
 	mux.HandleFunc("GET /sitemap", api.HandleSitemapForm)
 	mux.HandleFunc("POST /sitemap", api.HandleSitemapGenerate)
 
+	mux.HandleFunc("GET /audit", api.HandleAuditForm)
+	mux.HandleFunc("POST /audit", api.HandleAuditAnalyze)
+
+	mux.HandleFunc("GET /local", api.HandleLocalForm)
+	mux.HandleFunc("POST /local", api.HandleLocalAnalyze)
+
+	mux.HandleFunc("GET /review", api.HandleReviewForm)
+	mux.HandleFunc("POST /review", api.HandleReviewAnalyze)
+
 	fs := http.FileServer(http.Dir("web/static"))
 	mux.Handle("GET /static/", http.StripPrefix("/static/", fs))
 
